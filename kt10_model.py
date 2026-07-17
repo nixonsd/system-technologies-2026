@@ -86,8 +86,15 @@ if __name__ == "__main__":
     if not init_model(default_path):
         raise SystemExit(f"Could not load model from {default_path!r} — run the "
                          f"export cell in system_technologies.ipynb first.")
-    # Example feature vector (SensorId, Volume, Area, MaxHeight, CenterDiviation,
-    # UsedCoilArea, SensorTemp, SensorValueRAW).
-    sample = (1, 1000.0, 500.0, 20.0, 5.0, 300.0, 25.0, 1500.0)
+    # Example feature vectors (SensorId, Volume, Area, MaxHeight, CenterDiviation,
+    # UsedCoilArea, SensorTemp, SensorValueRAW) — the three UL17.1.0 measurements
+    # from 2026-5-28_9-3-40, all with an actual KT10valueMax of 6.5.
+    samples = [
+        (3, 13.4982, 15.7059, 1.29118, 14.8655, 0.565217, 29, 200.31),
+        (3, 13.4982, 15.7059, 1.29118, 6.06901, 0.731225, 29, 118.31),
+        (3, 13.4982, 15.7059, 1.29118, 9.9104, 0.660079, 29, 58.3097),
+        (8.0, 13.532123565673828, 15.226237297058105, 1.3174400329589844, 6.104642391204834, 0.7588932514190674, 33.5, 254.85765075683594)
+    ]
     print("Loaded model:", default_path)
-    print("Predicted KT10valueMax:", predictValue(*sample))
+    for sample in samples:
+        print("Predicted KT10valueMax:", predictValue(*sample))

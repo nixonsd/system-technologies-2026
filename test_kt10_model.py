@@ -53,7 +53,7 @@ def main():
     print(f"Loaded model: {MODEL}\n")
 
     df = load_dataset(DATASET)
-    sample = pick_sample_rows(df, n=20)
+    sample = pick_sample_rows(df, n=100)
 
     print(f"{'real':>10} {'predicted':>12} {'diff':>10} {'abs_diff':>10} {'err_%':>8}")
     print("-" * 54)
