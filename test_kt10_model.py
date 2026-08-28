@@ -62,7 +62,7 @@ def main():
     print()
 
     df = load_dataset(DATASET)
-    sample = pick_sample_rows(df, n=100)
+    sample = pick_sample_rows(df, n=200)
 
     header = f"{'real':>10}" + "".join(
         f"{label[:9] + '_pred':>16}{label[:9] + '_diff':>16}" for label, _, _ in MODELS
