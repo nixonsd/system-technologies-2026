@@ -1,26 +1,32 @@
-"""Standalone KT10valueMax inference module.
+"""Standalone KT10valueMax inference module — RandomForest variant.
 
-Exposes two functions required by the integration spec (plan.xlsx, sheet "Вимоги"):
+Mirrors the API of ``kt10_model.py`` exactly, so the two are drop-in
+interchangeable for a caller:
 
     init_model(model_path, base_dir=None) -> bool
     predictValue(x0, x1, x2, x3, x4, x5, x6) -> float
 
-The model file is the bare fitted XGBoost regressor exported from
-``system_technologies.ipynb`` (native ``save_model`` JSON). The regressor is trained
-on the target in log1p space, so ``predictValue`` inverts it with ``expm1`` to return
-KT10valueMax in real units.
+The model file is the bare fitted ``RandomForestRegressor`` exported from
+``system_technologies.ipynb`` via ``joblib.dump`` to ``model_export/kt10_rf.joblib``.
+The regressor is trained on the target in log1p space, so ``predictValue`` inverts it
+with ``expm1`` to return KT10valueMax in real units.
 
-Runtime dependencies: xgboost, numpy (plus the standard-library ``os``).
+Runtime dependencies: scikit-learn, joblib, numpy. Note this is a heavier runtime than
+``kt10_model.py`` (xgboost + numpy), and RandomForest inference is markedly slower per
+call — see the latency benchmark in the notebook before choosing between them.
+
+A joblib/pickle model file is tied to the scikit-learn version that wrote it; loading it
+under a different version may warn or fail. Re-export from the notebook after upgrading.
 """
 
 import os
 
+import joblib
 import numpy as np
-import xgboost as xgb
 
-# Feature order per notebook Cell 7 feature_cols. Label, DateTime and SensorId are
-# metadata rather than sensor measurements and are deliberately not model inputs —
-# see model_comparison/ore_sorting_ml_comparison.ipynb, which excludes the same three.
+# Feature order per notebook Cell 7 feature_cols — identical to kt10_model.py.
+# Label, DateTime and SensorId are metadata rather than sensor measurements and are
+# deliberately not model inputs.
 FEATURE_ORDER = (
     "Volume",
     "Area",
@@ -31,14 +37,14 @@ FEATURE_ORDER = (
     "SensorValueRAW",
 )
 
-_model = None  # loaded XGBRegressor, set by init_model()
+_model = None  # loaded RandomForestRegressor, set by init_model()
 
 
 def init_model(model_path, base_dir=None):
     """Load the model weights file.
 
     Args:
-        model_path: path to the exported model file (e.g. "kt10_xgb.json").
+        model_path: path to the exported model file (e.g. "kt10_rf.joblib").
         base_dir: optional base directory prepended to ``model_path`` so model
             files can live anywhere without changing the program's working
             directory.
@@ -52,9 +58,7 @@ def init_model(model_path, base_dir=None):
         full_path = os.path.join(base_dir, model_path) if base_dir else model_path
         if not os.path.isfile(full_path):
             return False
-        model = xgb.XGBRegressor()
-        model.load_model(full_path)
-        _model = model
+        _model = joblib.load(full_path)
         return True
     except Exception:
         return False
@@ -76,13 +80,13 @@ def predictValue(x0, x1, x2, x3, x4, x5, x6):
     if _model is None:
         raise RuntimeError("Model not initialized. Call init_model() first.")
     features = np.array([[x0, x1, x2, x3, x4, x5, x6]], dtype=np.float32)
-    raw_pred = _model.predict(features, validate_features=False)
+    raw_pred = _model.predict(features)
     return float(np.expm1(raw_pred[0]))
 
 
 if __name__ == "__main__":
     # Smoke test against the exported model.
-    default_path = os.path.join("model_export", "kt10_xgb.json")
+    default_path = os.path.join("model_export", "kt10_rf.joblib")
     if not init_model(default_path):
         raise SystemExit(f"Could not load model from {default_path!r} — run the "
                          f"export cell in system_technologies.ipynb first.")

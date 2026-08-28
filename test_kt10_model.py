@@ -1,8 +1,8 @@
-"""Quick check of the exported model via the standalone module.
+"""Quick check of both exported models via the standalone modules.
 
-Loads model_export/kt10_xgb.json through kt10_model.init_model, then runs
-predictValue on a spread of rows from the dataset and prints the real vs.
-predicted KT10valueMax along with the difference.
+Loads model_export/kt10_xgb.json through kt10_model and model_export/kt10_rf.joblib
+through kt10_model_rf, then runs predictValue on a spread of rows from the dataset
+and prints real vs. predicted KT10valueMax for both, side by side.
 
 Run:  python test_kt10_model.py
 """
@@ -11,12 +11,19 @@ import numpy as np
 import pandas as pd
 
 import kt10_model
+import kt10_model_rf
 
 DATASET = "samples/dataset.xlsx"
-MODEL = "model_export/kt10_xgb.json"
+
+# (label, module, weights file) — both modules expose the same init_model/predictValue API.
+MODELS = [
+    ("XGBoost", kt10_model, "model_export/kt10_xgb.json"),
+    ("RandomForest", kt10_model_rf, "model_export/kt10_rf.joblib"),
+]
 
 # Feature order expected by predictValue (same as notebook feature_cols).
 FEATURES = list(kt10_model.FEATURE_ORDER)
+assert FEATURES == list(kt10_model_rf.FEATURE_ORDER), "modules disagree on feature order"
 
 
 def load_dataset(path):
@@ -45,35 +52,42 @@ def pick_sample_rows(df, n=8):
 
 
 def main():
-    if not kt10_model.init_model(MODEL):
-        raise SystemExit(
-            f"Could not load model from {MODEL!r}. "
-            f"Run the export cell in system_technologies.ipynb first."
-        )
-    print(f"Loaded model: {MODEL}\n")
+    for label, module, path in MODELS:
+        if not module.init_model(path):
+            raise SystemExit(
+                f"Could not load {label} model from {path!r}. "
+                f"Run the export cell in system_technologies.ipynb first."
+            )
+        print(f"Loaded {label:<13} from {path}")
+    print()
 
     df = load_dataset(DATASET)
     sample = pick_sample_rows(df, n=100)
 
-    print(f"{'real':>10} {'predicted':>12} {'diff':>10} {'abs_diff':>10} {'err_%':>8}")
-    print("-" * 54)
+    header = f"{'real':>10}" + "".join(
+        f"{label[:9] + '_pred':>16}{label[:9] + '_diff':>16}" for label, _, _ in MODELS
+    )
+    print(header)
+    print("-" * len(header))
 
-    abs_diffs = []
+    abs_diffs = {label: [] for label, _, _ in MODELS}
     for _, row in sample.iterrows():
-        features = [row[c] for c in FEATURES]          # in the required order
+        features = [row[c] for c in FEATURES]      # in the required order
         real = float(row["KT10valueMax"])
-        pred = kt10_model.predictValue(*features)      # 8 separate args
-        diff = pred - real
-        abs_diff = abs(diff)
-        err_pct = (abs_diff / real * 100.0) if real != 0 else float("nan")
-        abs_diffs.append(abs_diff)
-        print(f"{real:10.3f} {pred:12.3f} {diff:10.3f} {abs_diff:10.3f} {err_pct:7.1f}%")
+        line = f"{real:10.3f}"
+        for label, module, _ in MODELS:
+            pred = module.predictValue(*features)  # 7 separate args
+            diff = pred - real
+            abs_diffs[label].append(abs(diff))
+            line += f"{pred:16.3f}{diff:16.3f}"
+        print(line)
 
-    abs_diffs = np.array(abs_diffs)
-    print("-" * 54)
-    print(f"Sample size : {len(abs_diffs)}")
-    print(f"MAE         : {abs_diffs.mean():.3f}")
-    print(f"Max abs diff: {abs_diffs.max():.3f}")
+    print("-" * len(header))
+    print(f"Sample size : {len(sample)}\n")
+    print(f"{'model':<15}{'MAE':>10}{'max_abs_diff':>15}")
+    for label, _, _ in MODELS:
+        d = np.array(abs_diffs[label])
+        print(f"{label:<15}{d.mean():10.3f}{d.max():15.3f}")
 
 
 if __name__ == "__main__":
