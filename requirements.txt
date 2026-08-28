@@ -1,0 +1,36 @@
+# Environment for system_technologies.ipynb and feature_importance.ipynb.
+#
+# Lower bounds are what the notebooks were last run and recorded against
+# (python 3.12). They are floors, not pins — the notebooks no longer depend on
+# any library-internal behaviour that moves between releases:
+#
+#   The CV split used to come from sklearn's GroupKFold, whose group -> fold
+#   assignment CHANGED between 1.7 and 1.9. Identical data produced different
+#   folds and materially different scores depending on the install, which broke
+#   feature_importance.ipynb's reproduction guard on a clean machine. Both
+#   notebooks now build the split themselves (`GroupFolds`), so folds depend only
+#   on the data. Fitted scores can still drift by a hair across xgboost/sklearn
+#   patch releases; the guard tolerates that and tells you when it is too large.
+#
+# Install:  pip install -r requirements.txt
+
+pandas>=2.2.3
+numpy>=2.4.6
+scipy>=1.17.1
+scikit-learn>=1.9.0
+xgboost>=3.2.0
+optuna>=4.9.0
+joblib>=1.5.3
+matplotlib>=3.10.1
+openpyxl>=3.1.5
+
+# Jupyter kernel the notebooks run under ("Python 3 (ipykernel)").
+ipykernel>=6.29.5
+notebook>=7.3.2
+
+# feature_importance.ipynb Block 7 (SHAP: direction and shape of each feature's
+# contribution). The block guards its import and skips cleanly if this is absent,
+# so it is not required to run the notebook — but Block 7 is the only place the
+# analysis gets a SIGN rather than a magnitude, so install it.
+# Pulls in numba + llvmlite (~64 MB); does not change the numpy/sklearn versions.
+shap>=0.52.0

@@ -1,0 +1,33 @@
+Effective sample size: 90 batches (4161 rows).
+
+Feature importance (drop in log-R^2 when permuted, batch-bootstrap 95% CI):
+  XGBoost:
+    REAL  SensorValueRAW   +0.7288 [+0.5525, +1.0308]  +/-0.0101 across configs
+    REAL  Volume           +0.0802 [+0.0524, +0.1281]  +/-0.0116 across configs
+    REAL  GEOMETRY_BLOCK   +0.0794 [+0.0441, +0.1352]  +/-0.0048 across configs
+    REAL  Area             +0.0152 [+0.0072, +0.0251]  +/-0.0022 across configs
+    REAL  CenterDiviation  +0.0040 [+0.0026, +0.0069]  +/-0.0002 across configs
+    null  SensorTemp       +0.0023 [+0.0014, +0.0042]
+    null  UsedCoilArea     +0.0022 [-0.0007, +0.0055]
+    null  MaxHeight        -0.0027 [-0.0239, +0.0122]
+  RandomForest:
+    REAL  SensorValueRAW   +0.6331 [+0.4600, +0.9086]  +/-0.0018 across configs
+    REAL  GEOMETRY_BLOCK   +0.1564 [+0.1107, +0.2284]  +/-0.0016 across configs
+    REAL  Volume           +0.0943 [+0.0661, +0.1464]  +/-0.0028 across configs
+    REAL  Area             +0.0174 [+0.0052, +0.0307]  +/-0.0009 across configs
+    REAL  UsedCoilArea     +0.0015 [+0.0001, +0.0034]  +/-0.0001 across configs
+    REAL  CenterDiviation  +0.0005 [+0.0003, +0.0008]  +/-0.0000 across configs
+    null  MaxHeight        +0.0065 [-0.0013, +0.0154]
+    null  SensorTemp       +0.0002 [+0.0001, +0.0004]
+
+Conditional contribution (dev, retrained):
+  XGBoost: RAW alone 0.9200 -> all 7 0.9401 (geometry adds +0.0201); without RAW 0.2862
+  RandomForest: RAW alone 0.9186 -> all 7 0.9432 (geometry adds +0.0246); without RAW 0.4096
+
+Engineered features: 24 screened, 0 passed FDR q=0.1 on dev -> none
+
+Caveats carried by this analysis:
+  - Confirmation covers the non-extreme range only; the 2 batches above 200
+    are needed in training and cannot also be held out.
+  - Seal has 20 batches: low power, wide intervals by construction.
+  - Bootstrap p-values are descriptive levels, not exact tests.
